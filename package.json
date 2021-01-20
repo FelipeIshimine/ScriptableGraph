@@ -1,0 +1,29 @@
+{
+  "name": "com.ishimine.scriptablegraph",
+  "displayName": "Scriptable Graph System",
+  "version": "1.0.0",
+  "unity": "2019.1",
+  "description": "Node base editor. Base on Mert Kirimgeri's \"Unity Dialogue Graph Tutorial\"",
+  "keywords": [
+    "Graph",
+    "GraphView",
+    "Dialogue",
+    "Narrative",
+    "Story based"
+  ],
+  "samples": [
+    {
+      "displayName": "Demo Scene",
+      "description": "A simple example for loading and displaying the Dialogue and branching",
+      "path": "Samples/DialogueSystemDemo",
+      "dependencies": {
+        "com.unity.textmeshpro": "2.0.1"
+      }
+    }
+  ],
+  "category": "Visual Scripting",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/m3rt32/NodeBasedDialogueSystem.git"
+  }
+}
