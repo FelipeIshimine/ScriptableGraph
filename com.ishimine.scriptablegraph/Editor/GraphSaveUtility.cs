@@ -49,105 +49,91 @@ namespace Ishimine.ScriptableGraph.Editor
         {
             if (!Edges.Any()) return false;
             var connectedSockets = Edges;
-            /*
-            for (var i = 0; i < connectedSockets.Count(); i++)  //Links
+
+            foreach (var node in Nodes) //Nodos
             {
-                var outputNode = (connectedSockets[i].output.node as ContentNode);
-                var inputNode = (connectedSockets[i].input.node as ContentNode);
-
-                ScriptableObject content = null;
-
-                if (outputNode.LinksContent.Count > 0)
-                {
-                    var pair = outputNode.LinksContent.First(x => x.OwnerGUID == outputNode.GUID);
-                    outputNode.LinksContent.Remove(pair);
-                    content = UnityEngine.Object.Instantiate(pair.Content);
-                    content.name = i.ToString();
-                    AssetDatabase.AddObjectToAsset(content, dialogueContainerObject);
-                    dialogueContainerObject.LinksContent.Add(new ContentPair(outputNode.GUID, content));
-                }
-                dialogueContainerObject.NodeLinks.Add(new ContentLinkData
-                {
-                    BaseNodeGUID = outputNode.GUID,
-                    PortName = connectedSockets[i].output.portName,
-                    TargetNodeGUID = inputNode.GUID,
-                    Content = content
-                });
-            }*/
-
-            foreach (var node in Nodes)  //Nodos
-            {
-                if(!node.EntryPoint)
+                if (!node.EntryPoint) //Salteamos el nodo de entrada
                 {
                     var nodeContent = UnityEngine.Object.Instantiate(node.Content);
-                    nodeContent.name = node.title;
+                    nodeContent.name = node._title;
                     AssetDatabase.AddObjectToAsset(nodeContent, dialogueContainerObject);
-                    dialogueContainerObject.NodesContent.Add(new ContentPair(node.GUID, nodeContent));
+                    //dialogueContainerObject.NodesContent.Add(new ContentPair(node.GUID, nodeContent));
 
-                    dialogueContainerObject.DialogueNodeData.Add(new ContentNodeData
+                    dialogueContainerObject.dialogueNodeData.Add(new ContentNodeData
                     {
                         GUID = node.GUID,
                         Position = node.GetPosition().position,
-                        Content = nodeContent
+                        Content= nodeContent
                     });
                 }
-                
+
+                var ports = _graphView.ports.ToList().Where(x => x.node == node && x.direction == Direction.Output)
+                    .ToList();
+
+                //Edges
+                HashSet<ContentPair> savedContent = new HashSet<ContentPair>();
                 var edges = connectedSockets.Where(x => x.output.node == node).ToList();
                 for (int i = 0; i < edges.Count; i++)
                 {
                     ScriptableObject linkContent = null;
                     if (node.LinksContent.Count > 0)
                     {
-                        var pair = node.LinksContent[i];
+                        ContentPair pair = node.LinksContent[i];
                         linkContent = UnityEngine.Object.Instantiate(pair.Content);
                         linkContent.name = i.ToString();
                         AssetDatabase.AddObjectToAsset(linkContent, dialogueContainerObject);
-                        dialogueContainerObject.LinksContent.Add(new ContentPair(node.GUID, linkContent));
+                        //dialogueContainerObject.LinksContent.Add(new ContentPair(node.GUID, linkContent));
+                        savedContent.Add(node.LinksContent[i]);
                     }
 
-                    var inputNode = (edges[i].input.node as ContentNode);
-                    Debug.Log(edges[i].output.portName);
-                    dialogueContainerObject.NodeLinks.Add(new ContentLinkData
+                    var inputNode = (ContentNode)edges[i].input.node;
+
+
+                    dialogueContainerObject.nodeLinks.Add(new ContentLinkData()
                     {
-                        BaseNodeGUID = node.GUID,
+                        BaseNodeGUID= node.GUID,
                         PortName = edges[i].output.portName,
                         TargetNodeGUID = inputNode.GUID,
                         Content = linkContent
                     });
+
+                }
+
+                //Guardar Links sin destino
+                for (var i = 0; i < node.LinksContent.Count; i++)
+                {
+                    ContentPair contentPair = node.LinksContent[i];
+
+                    if (!savedContent.Contains(contentPair))
+                    {
+                        ScriptableObject linkContent = null;
+
+                        ContentPair pair = node.LinksContent[i];
+                        linkContent = UnityEngine.Object.Instantiate(pair.Content);
+                        linkContent.name = i.ToString();
+                        AssetDatabase.AddObjectToAsset(linkContent, dialogueContainerObject);
+                        //dialogueContainerObject.LinksContent.Add(new ContentPair(node.GUID, linkContent));
+                        savedContent.Add(node.LinksContent[i]);
+
+                        Debug.Log(contentPair.Content.GetType());
+                        dialogueContainerObject.nodeLinks.Add(new ContentLinkData()
+                        {
+                            BaseNodeGUID= node.GUID,
+                            PortName = ports[i].portName,
+                            TargetNodeGUID = null,
+                            Content = linkContent
+                        });
+                    }
                 }
             }
-
-
-
-
-
-
-            return true;
-
-
-
-
-            foreach (var node in Nodes.Where(node => !node.EntryPoint))  //Nodos
-            {
-                var content = UnityEngine.Object.Instantiate(node.Content);
-                content.name = node.title;
-                AssetDatabase.AddObjectToAsset(content, dialogueContainerObject);
-                dialogueContainerObject.NodesContent.Add(new ContentPair(node.GUID, content));
-
-                dialogueContainerObject.DialogueNodeData.Add(new ContentNodeData
-                {
-                    GUID = node.GUID,
-                    Position = node.GetPosition().position,
-                    Content = content
-                });
-            }
+            
             return true;
         }
 
         private void SaveExposedProperties(GraphContainer dialogueContainer)
         {
-            dialogueContainer.ExposedProperties.Clear();
-            dialogueContainer.ExposedProperties.AddRange(_graphView.ExposedProperties);
+            dialogueContainer.exposedProperties.Clear();
+            dialogueContainer.exposedProperties.AddRange(_graphView.ExposedProperties);
         }
 
         private void SaveCommentBlocks(GraphContainer dialogueContainer)
@@ -157,7 +143,7 @@ namespace Ishimine.ScriptableGraph.Editor
                 var nodes = block.containedElements.Where(x => x is ContentNode).Cast<ContentNode>().Select(x => x.GUID)
                     .ToList();
 
-                dialogueContainer.CommentBlockData.Add(new CommentBlockData
+                dialogueContainer.commentBlockData.Add(new CommentBlockData
                 {
                     ChildNodes = nodes,
                     Title = block.title,
@@ -187,7 +173,7 @@ namespace Ishimine.ScriptableGraph.Editor
         /// </summary>
         private void ClearGraph()
         {
-            Nodes.Find(x => x.EntryPoint).GUID = _dialogueContainer.NodeLinks[0].BaseNodeGUID;
+            Nodes.Find(x => x.EntryPoint).GUID = _dialogueContainer.nodeLinks[0].BaseNodeGUID;
             foreach (var perNode in Nodes)
             {
                 if (perNode.EntryPoint) continue;
@@ -202,13 +188,13 @@ namespace Ishimine.ScriptableGraph.Editor
         /// </summary>
         private void GenerateDialogueNodes()
         {
-            foreach (var perNode in _dialogueContainer.DialogueNodeData)
+            foreach (var perNode in _dialogueContainer.dialogueNodeData)
             {
                 var tempNode = _graphView.CreateNode(perNode.Content.name, Vector2.zero, ScriptableObject.Instantiate(perNode.Content));
                 tempNode.GUID = perNode.GUID;
                 _graphView.AddElement(tempNode);
 
-                var nodePorts = _dialogueContainer.NodeLinks.Where(x => x.BaseNodeGUID == perNode.GUID).ToList();
+                var nodePorts = _dialogueContainer.nodeLinks.Where(x => x.BaseNodeGUID == perNode.GUID).ToList();
 
                 for (int i = 0; i < nodePorts.Count; i++)
                     _graphView.AddChoicePort(tempNode, nodePorts[i].PortName, ScriptableObject.Instantiate(nodePorts[i].Content));
@@ -220,15 +206,18 @@ namespace Ishimine.ScriptableGraph.Editor
             for (var i = 0; i < Nodes.Count; i++)
             {
                 var k = i; //Prevent access to modified closure
-                var connections = _dialogueContainer.NodeLinks.Where(x => x.BaseNodeGUID == Nodes[k].GUID).ToList();
+                var connections = _dialogueContainer.nodeLinks.Where(x => x.BaseNodeGUID == Nodes[k].GUID).ToList();
                 for (var j = 0; j < connections.Count(); j++)
                 {
                     var targetNodeGUID = connections[j].TargetNodeGUID;
-                    var targetNode = Nodes.First(x => x.GUID == targetNodeGUID);
+                    var targetNode = Nodes.Find(x => x.GUID == targetNodeGUID);
+
+                    if (targetNode == null)
+                        continue;
                     LinkNodesTogether(Nodes[i].outputContainer[j].Q<Port>(), (Port) targetNode.inputContainer[0]);
 
                     targetNode.SetPosition(new Rect(
-                        _dialogueContainer.DialogueNodeData.First(x => x.GUID == targetNodeGUID).Position,
+                        _dialogueContainer.dialogueNodeData.First(x => x.GUID == targetNodeGUID).Position,
                         _graphView.DefaultNodeSize));
                 }
             }
@@ -249,7 +238,7 @@ namespace Ishimine.ScriptableGraph.Editor
         private void AddExposedProperties()
         {
             _graphView.ClearBlackBoardAndExposedProperties();
-            foreach (var exposedProperty in _dialogueContainer.ExposedProperties)
+            foreach (var exposedProperty in _dialogueContainer.exposedProperties)
             {
                 _graphView.AddPropertyToBlackBoard(exposedProperty);
             }
@@ -262,7 +251,7 @@ namespace Ishimine.ScriptableGraph.Editor
                 _graphView.RemoveElement(commentBlock);
             }
 
-            foreach (var commentBlockData in _dialogueContainer.CommentBlockData)
+            foreach (var commentBlockData in _dialogueContainer.commentBlockData)
             {
                var block = _graphView.CreateCommentBlock(new Rect(commentBlockData.Position, _graphView.DefaultCommentBlockSize),
                     commentBlockData);

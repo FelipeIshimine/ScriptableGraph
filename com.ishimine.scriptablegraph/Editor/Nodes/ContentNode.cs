@@ -12,5 +12,6 @@ namespace Ishimine.ScriptableGraph.Editor
         public ScriptableObject Content;
         public List<ContentPair> LinksContent = new List<ContentPair>(); 
         public bool EntryPoint = false;
+        public string _title;
     }
 }

@@ -1,3 +1,19 @@
 ContentNodes #title {
     background-color: rgba(29, 80, 115, 0.91);
 }
+
+.text_title
+{
+    background-color: rgba(0,0,0,0);
+}
+
+
+.text_title active
+{
+    background-color: rgba(0,0,0,.5);
+}
+
+.text_title active
+{
+    background-color: rgba(0,0,0,.25);
+}

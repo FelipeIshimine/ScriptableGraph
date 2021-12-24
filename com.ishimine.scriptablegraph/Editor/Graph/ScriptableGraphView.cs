@@ -56,15 +56,14 @@ namespace Ishimine.ScriptableGraph.Editor
             _lastMousePosition = evt.mousePosition;
         }
 
-
         public override void BuildContextualMenu(ContextualMenuPopulateEvent evt)
         {
             Vector2 graphMousePosition = GetMousePosition();
 
             if (evt.target is GraphView || evt.target is Node)
             {
-                evt.menu.AppendAction("Content Node", (e) => CreateNewNode("Content Node", graphMousePosition));
-                evt.menu.AppendAction("Comment Node", (e) => CreateCommentBlock(new Rect(graphMousePosition, DefaultCommentBlockSize)));
+                evt.menu.AppendAction("Node", (e) => CreateNewNode("New Node", graphMousePosition));
+                evt.menu.AppendAction("Group", (e) => CreateCommentBlock(new Rect(graphMousePosition, DefaultCommentBlockSize)));
             }
 
             base.BuildContextualMenu(evt);
@@ -158,68 +157,59 @@ namespace Ishimine.ScriptableGraph.Editor
 
         public  void CreateNewNode(string nodeName, Vector2 position) => AddElement(CreateNode(nodeName, position));
 
-        public  ContentNode CreateNode(string nodeName, Vector2 position) => _CreateNode(nodeName, position);
-        public ContentNode CreateNode(string nodeName, Vector2 position, ScriptableObject nodeContent) => _CreateNode(nodeName, position, nodeContent);
-        public ContentNode _CreateNode(string nodeName, Vector2 position, ScriptableObject nodeContent = null)
+        public ContentNode CreateNode(string nodeName, Vector2 position, ScriptableObject nodeContent = null)
         {
-            var tempDialogueNode = new ContentNode()
+            var node = new ContentNode()
             {
-                title = nodeName,
                 Content = nodeContent? Object.Instantiate(nodeContent):OnCreateNewNodeContent?.Invoke(),
                 GUID = Guid.NewGuid().ToString()
             };
-            var inputPort = GetPortInstance(tempDialogueNode, Direction.Input, Port.Capacity.Multi);
+
+            var btnContainer = node.titleContainer.Q("title-button-container");
+            var collapseBtn = btnContainer.Q("collapse-button");
+            
+            btnContainer.Remove(collapseBtn);
+            
+            var inputPort = GetPortInstance(node, Direction.Input, Port.Capacity.Multi);
             inputPort.portName = "Input";
-            tempDialogueNode.inputContainer.Add(inputPort);
-            tempDialogueNode.RefreshExpandedState();
-            tempDialogueNode.RefreshPorts();
-            tempDialogueNode.SetPosition(new Rect(position,
+            node.inputContainer.Add(inputPort);
+            
+            node.SetPosition(new Rect(position,
                 DefaultNodeSize)); //To-Do: implement screen center instantiation positioning
 
-            var textField = new TextField("");
-            textField.RegisterValueChangedCallback(evt => { tempDialogueNode.title = evt.newValue; });
+            var titleTextField = new TextField() { value = nodeName };
+            titleTextField.RegisterValueChangedCallback(evt => { node._title = evt.newValue; });
+            
+            titleTextField.style.minWidth = 100;
+            
+            node.titleContainer.Insert(0,titleTextField);
 
-            if (tempDialogueNode.Content is INodeTitle nodeTitle && nodeTitle.GetTitle() != string.Empty)
+
+            Foldout foldout = new Foldout() { value = true };
+            IMGUIContainer contentRender = RenderContent(node.Content);
+            foldout.Add(contentRender);
+            node.inputContainer.contentContainer.Add(foldout);
+
+            if (node.Content is INodeColor useColor)
             {
-                tempDialogueNode.title = textField.value = nodeTitle.GetTitle();
-                textField.SetEnabled(false);
-                tempDialogueNode.RegisterCallback<MouseMoveEvent>(x =>
+                node.titleContainer.style.backgroundColor = useColor.GetColor();
+                node.RegisterCallback<MouseMoveEvent>(x =>
                 {
-                    tempDialogueNode.title = textField.value = nodeTitle.GetTitle();
-                    textField.SetEnabled(false);
+                    node.titleContainer.style.backgroundColor = useColor.GetColor();
                 });
             }
             else
-            {
-                textField.value = tempDialogueNode.title;
-                textField.SetEnabled(true);
-            }
+                node.titleContainer.style.backgroundColor = new Color(29/255f,80/255f,115/255f);
 
-            IMGUIContainer imgGUI = RenderContent(tempDialogueNode.Content);
-            tempDialogueNode.inputContainer.Add(textField);
-            tempDialogueNode.inputContainer.Add(imgGUI);
-
-            if (tempDialogueNode.Content is INodeColor useColor)
-            {
-                tempDialogueNode.titleContainer.style.backgroundColor = useColor.GetColor();
-                tempDialogueNode.RegisterCallback<MouseMoveEvent>(x =>
-                {
-                    tempDialogueNode.titleContainer.style.backgroundColor = useColor.GetColor();
-                });
-            }
-            else
-                tempDialogueNode.titleContainer.style.backgroundColor = new Color(29/255f,80/255f,115/255f);
-
-            var button = new Button(() => 
-            {
-                AddChoicePort(tempDialogueNode);
-            })
-            {
-                text = "Add Choice"
-
-            };
-            tempDialogueNode.titleButtonContainer.Add(button);
-            return tempDialogueNode;
+            void AddChoice() => AddChoicePort(node);
+            
+            var button = new Button(AddChoice) { text = "Add Choice" };
+            node.titleButtonContainer.Add(button);
+            
+            node.RefreshPorts();
+            node.RefreshExpandedState();
+                
+            return node;
         }
 
         private static IMGUIContainer RenderContent(ScriptableObject content)
@@ -240,8 +230,8 @@ namespace Ishimine.ScriptableGraph.Editor
             generatedPort.style.borderBottomColor = new StyleColor(new Color(.1f, .1f, .1f));
             generatedPort.style.borderBottomWidth = 1;
             var portLabel = generatedPort.contentContainer.Q<Label>("type");
-            var connector = generatedPort.contentContainer.Q<VisualElement>("connector");
-            //generatedPort.Remove(connector);
+            //var connector = generatedPort.contentContainer.Q<VisualElement>("connector");
+            
             generatedPort.contentContainer.Remove(portLabel);
 
             generatedPort.style.height = new StyleLength(StyleKeyword.Auto);
@@ -286,11 +276,16 @@ namespace Ishimine.ScriptableGraph.Editor
             mainContainer.Add(upperContainer);
 
             nodeCache.LinksContent.Add(contentPair);
-            mainContainer.Add(RenderContent(content));
+
+            Foldout foldout = new Foldout() { value = false };
+            foldout.Add(RenderContent(content));
+            mainContainer.Add(foldout);
 
             generatedPort.contentContainer.Add(mainContainer);
 
             nodeCache.outputContainer.Add(generatedPort);
+            
+            
             nodeCache.RefreshPorts();
             nodeCache.RefreshExpandedState();
         }

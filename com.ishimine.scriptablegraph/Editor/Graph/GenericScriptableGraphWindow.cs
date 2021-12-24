@@ -21,8 +21,8 @@ namespace Ishimine.ScriptableGraph.Editor
         protected override void ConstructGraphView()
         {
             base.ConstructGraphView();
-            _graphView.OnCreateNewNodeContent = ()=> CreateInstance<TNode>();
-            _graphView.OnCreateNewLinkContent = () => CreateInstance<TLink>();
+            _graphView.OnCreateNewNodeContent = CreateInstance<TNode>;
+            _graphView.OnCreateNewLinkContent = CreateInstance<TLink>;
         }
     }
 }

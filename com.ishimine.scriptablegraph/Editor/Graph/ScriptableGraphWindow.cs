@@ -13,18 +13,18 @@ namespace Ishimine.ScriptableGraph.Editor
 {
     public abstract class ScriptableGraphWindow : EditorWindow
     {
-        protected ScriptableGraphView _graphView;
+        protected static ScriptableGraphView _graphView;
         
         protected TextField filePath;
 
         protected virtual void ConstructGraphView()
         {
-            _graphView = new ScriptableGraphView(this)
+            _graphView ??= new ScriptableGraphView(this)
             {
                 name = "ScriptableGraphWindow",
             };
-            _graphView.StretchToParentSize();
             rootVisualElement.Add(_graphView);
+            _graphView.StretchToParentSize();
         }
 
         protected virtual Toolbar GenerateToolbar()

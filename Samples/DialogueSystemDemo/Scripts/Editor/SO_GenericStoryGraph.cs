@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Ishimine.ScriptableGraph.Editor
 {
-    public class SO_GenericStoryGraph : GenericStoryGraph<NoteContentTest, LinkContentTest>
+    public class SO_GenericStoryGraph : GenericScriptableGraphWindow<NoteContentTest, LinkContentTest>
     {
         [MenuItem("Graph/Test Graph")]
         public static void CreateGraphViewWindow()
@@ -12,4 +12,5 @@ namespace Ishimine.ScriptableGraph.Editor
             window.titleContent = new GUIContent("SO_GenericStoryGraph");
         }
     }
+
 }
